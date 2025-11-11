@@ -1,27 +1,16 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+// frontend/next.config.ts
+const nextConfig = {
+  experimental: {
+    // ✅ rename this (Next.js 15+ moved it)
+    serverExternalPackages: ["bcrypt", "@prisma/client"], // if you need them
+  },
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5001/api/:path*", // ✅ proxy to backend
+        destination: "http://localhost:5001/api/:path*", // or your live backend
       },
     ];
-  },
-
-  // 👇 Use the correct flag name (as of Next 15)
-  experimental: {
-    // ✅ The key is now `typedRoutes: true` etc., so we must wrap this under `serverComponentsExternalPackages`
-    // but for allowed origins, the property is under `serverActions.allowedOrigins`
-    // However, Next recently moved it under `serverExternalOrigins`.
-    // The easiest fix (and officially supported) is:
-    serverComponentsExternalPackages: [],
-    // @ts-expect-error (allowedDevOrigins is experimental and not yet typed)
-    allowedDevOrigins: [
-      "http://localhost:3000",
-    "http://45.115.54.111:3000",
-    ],
   },
 };
 
