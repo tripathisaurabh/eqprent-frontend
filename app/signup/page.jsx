@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "@/lib/apiConfig"; // ✅ import backend base URL
 
 export default function SignupPage() {
   const [formData, setFormData] = useState({
@@ -17,10 +18,7 @@ export default function SignupPage() {
   const router = useRouter();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
@@ -28,7 +26,7 @@ export default function SignupPage() {
     setLoading(true);
     setError("");
 
-    // Validation
+    // 🧠 Validation
     if (formData.password !== formData.confirmPassword) {
       setError("Passwords do not match");
       setLoading(false);
@@ -42,11 +40,10 @@ export default function SignupPage() {
     }
 
     try {
-      const response = await fetch("/api/auth/register", {
+      // ✅ Correct full backend URL
+      const response = await fetch(`${API_BASE_URL}/api/auth/register`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: formData.name,
           email: formData.email,
@@ -58,12 +55,10 @@ export default function SignupPage() {
       const data = await response.json();
 
       if (response.ok) {
-        // Auto login after successful registration
-        const loginResponse = await fetch("/api/auth/login", {
+        // ✅ Auto-login after signup
+        const loginResponse = await fetch(`${API_BASE_URL}/api/auth/login`, {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email: formData.email,
             password: formData.password,
@@ -77,16 +72,11 @@ export default function SignupPage() {
           localStorage.setItem("userRole", loginData.user.role);
           localStorage.setItem("userId", loginData.user.id);
           localStorage.setItem("userName", loginData.user.name);
-          
-          // Dispatch custom event to notify navbar
-          window.dispatchEvent(new CustomEvent('authStateChanged'));
-          
-          // Redirect based on role
-          if (loginData.user.role === "VENDOR") {
-            router.push("/vendor");
-          } else {
-            router.push("/dashboard");
-          }
+
+          // Notify navbar of login
+          window.dispatchEvent(new CustomEvent("authStateChanged"));
+
+          router.push(loginData.user.role === "VENDOR" ? "/vendor" : "/dashboard");
         } else {
           router.push("/login");
         }
@@ -94,6 +84,7 @@ export default function SignupPage() {
         setError(data.message || "Registration failed");
       }
     } catch (err) {
+      console.error("❌ Signup error:", err);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -110,12 +101,8 @@ export default function SignupPage() {
       >
         <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Create Account
-            </h2>
-            <p className="text-gray-600 mb-8">
-              Join HeavyEquip and start renting equipment
-            </p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
+            <p className="text-gray-600 mb-8">Join EqpRent and start renting equipment</p>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -217,10 +204,7 @@ export default function SignupPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Already have an account?{" "}
-              <Link
-                href="/login"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
+              <Link href="/login" className="font-medium text-blue-600 hover:text-blue-500">
                 Sign in here
               </Link>
             </p>

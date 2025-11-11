@@ -3,21 +3,16 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { API_BASE_URL } from "@/lib/apiConfig"; // ✅ import your backend base URL
 
 export default function LoginPage() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
-  });
+  const [formData, setFormData] = useState({ email: "", password: "" });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const router = useRouter();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    });
+    setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
   const handleSubmit = async (e) => {
@@ -26,11 +21,9 @@ export default function LoginPage() {
     setError("");
 
     try {
-      const response = await fetch("/api/auth/login", {
+      const response = await fetch(`${API_BASE_URL}/api/auth/login`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
@@ -41,20 +34,17 @@ export default function LoginPage() {
         localStorage.setItem("userRole", data.user.role);
         localStorage.setItem("userId", data.user.id);
         localStorage.setItem("userName", data.user.name);
-        
-        // Dispatch custom event to notify navbar
-        window.dispatchEvent(new CustomEvent('authStateChanged'));
-        
+
+        // Notify navbar
+        window.dispatchEvent(new CustomEvent("authStateChanged"));
+
         // Redirect based on role
-        if (data.user.role === "VENDOR") {
-          router.push("/vendor");
-        } else {
-          router.push("/dashboard");
-        }
+        router.push(data.user.role === "VENDOR" ? "/vendor" : "/dashboard");
       } else {
         setError(data.message || "Login failed");
       }
     } catch (err) {
+      console.error("❌ Login error:", err);
       setError("Network error. Please try again.");
     } finally {
       setLoading(false);
@@ -71,12 +61,8 @@ export default function LoginPage() {
       >
         <div className="bg-white py-8 px-6 shadow-xl rounded-lg">
           <div className="text-center">
-            <h2 className="text-3xl font-bold text-gray-900 mb-2">
-              Welcome Back
-            </h2>
-            <p className="text-gray-600 mb-8">
-              Sign in to your HeavyEquip account
-            </p>
+            <h2 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h2>
+            <p className="text-gray-600 mb-8">Sign in to your EqpRent account</p>
           </div>
 
           <form className="space-y-6" onSubmit={handleSubmit}>
@@ -97,7 +83,7 @@ export default function LoginPage() {
                 required
                 value={formData.email}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your email"
               />
             </div>
@@ -113,7 +99,7 @@ export default function LoginPage() {
                 required
                 value={formData.password}
                 onChange={handleChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Enter your password"
               />
             </div>
@@ -129,11 +115,8 @@ export default function LoginPage() {
 
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
-              Don't have an account?{" "}
-              <Link
-                href="/signup"
-                className="font-medium text-blue-600 hover:text-blue-500"
-              >
+              Don’t have an account?{" "}
+              <Link href="/signup" className="font-medium text-blue-600 hover:text-blue-500">
                 Sign up here
               </Link>
             </p>
