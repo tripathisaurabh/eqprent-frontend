@@ -1,5 +1,7 @@
 "use client";
+
 import { useState, useEffect } from "react";
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export default function TransactionsTab() {
   const [transactions, setTransactions] = useState([]);
@@ -9,7 +11,7 @@ export default function TransactionsTab() {
     const userId = localStorage.getItem("userId");
     if (!userId) return;
 
-    fetch(`http://localhost:5001/api/transactions/user/${userId}`)
+    fetch(`${API_BASE_URL}/api/transactions/user/${userId}`)
       .then((res) => res.json())
       .then((data) => {
         console.log("🧾 Transactions API response:", data);
@@ -33,10 +35,14 @@ export default function TransactionsTab() {
           className="flex flex-col sm:flex-row justify-between sm:items-center p-4 border rounded-md hover:bg-gray-50"
         >
           <div>
-            <h3 className="font-semibold text-gray-800">₹{t.amount}</h3>
+            <h3 className="font-semibold text-gray-800">
+              ₹{t.booking?.totalAmount || t.amount}
+            </h3>
+
             <p className="text-sm text-gray-600">
               {new Date(t.createdAt).toLocaleString()}
             </p>
+
             <span
               className={`inline-block mt-1 px-2 py-0.5 text-xs rounded-full ${
                 t.status === "FAILED"
@@ -47,9 +53,10 @@ export default function TransactionsTab() {
               {t.status}
             </span>
           </div>
+
           <div className="text-right mt-3 sm:mt-0">
             <div className="text-xs text-gray-500">
-              Method: {t.paymentType || t.booking?.paymentType || "N/A"}
+              Method: {t.booking?.paymentType || "N/A"}
             </div>
             <div className="text-xs text-gray-500">
               Ref: {t.booking?.referenceId || "—"}
