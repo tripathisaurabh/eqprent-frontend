@@ -60,19 +60,21 @@ export default function SearchBar() {
     } catch {}
 
     // Send to backend
-    try {
-      const userId = localStorage.getItem("userId");
-      await fetch("http://localhost:5001/api/search-history", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: userId ? Number(userId) : null,
-          ...form,
-        }),
-      });
-    } catch (err) {
-      console.warn("Failed to log search:", err.message);
-    }
+    // Send to backend
+try {
+  const userId = localStorage.getItem("userId");
+  await fetch(`${API_BASE_URL}/api/search-history`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      userId: userId ? Number(userId) : null,
+      ...form,
+    }),
+  });
+} catch (err) {
+  console.warn("Failed to log search:", err.message);
+}
+
 
     // Redirect
     const query = new URLSearchParams(form).toString();
