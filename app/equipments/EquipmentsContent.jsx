@@ -51,16 +51,17 @@ export default function EquipmentsContent() {
         const res = await fetch(url, { cache: "no-store" });
         if (!res.ok) throw new Error("Failed to fetch equipments");
 
-        const data = await res.json();
-        const list = Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.results)
-          ? data.results
-          : Array.isArray(data)
-          ? data
-          : [];
+const data = await res.json();
 
-        setEquipments(list);
+// 🔥 FIX: correctly parse every type of response
+const list =
+  Array.isArray(data?.equipments) ? data.equipments :
+  Array.isArray(data?.items) ? data.items :
+  Array.isArray(data?.results) ? data.results :
+  Array.isArray(data) ? data :
+  [];
+
+setEquipments(list);
       } catch (err) {
         console.error("❌ Error fetching equipments:", err);
         setEquipments([]);
