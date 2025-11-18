@@ -49,26 +49,26 @@ export default function VendorEquipments() {
   });
 
   /* ------------------ AUTOCOMPLETE (OpenStreetMap) ------------------ */
-  const handleSearchInput = async (value: string) => {
-    setFormData((p) => ({ ...p, baseAddress: value }));
-    if (value.length < 3) return setSuggestions([]);
+/* ------------------ AUTOCOMPLETE (OpenStreetMap) ------------------ */
+const handleSearchInput = async (value) => {
+  setFormData((p) => ({ ...p, baseAddress: value }));
+  if (value.length < 3) return setSuggestions([]);
 
-    const url = `https://nominatim.openstreetmap.org/search?format=json&q=${value}`;
-    const res = await fetch(url);
-    const data = await res.json();
-    setSuggestions(data);
-  };
+  const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${value}`);
+  const data = await res.json();
+  setSuggestions(data);
+};
 
-  /* ------------------ SELECT SUGGESTION ------------------ */
-  const selectSuggestion = (place: any) => {
-    setSuggestions([]);
-    setFormData({
-      ...formData,
-      baseAddress: place.display_name,
-      baseLat: place.lat,
-      baseLng: place.lon,
-    });
-  };
+const selectSuggestion = (place) => {
+  setSuggestions([]);
+  setFormData({
+    ...formData,
+    baseAddress: place.display_name,
+    baseLat: place.lat,
+    baseLng: place.lon,
+  });
+};
+
 
   /* ------------------ Fetch Vendor Equipments ------------------ */
   const fetchEquipments = async () => {
