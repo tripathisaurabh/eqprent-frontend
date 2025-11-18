@@ -21,18 +21,15 @@ const loadGoogleMaps = () => {
   if (typeof window === "undefined") return;
   if (window.google && window.google.maps) return;
 
-  const existing = document.querySelector(
-    'script[src*="maps.googleapis.com/maps/api/js"]'
-  );
-  if (existing) return;
-
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+
   const script = document.createElement("script");
   script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
   script.async = true;
   script.defer = true;
   document.head.appendChild(script);
 };
+
 
 /* ------------------------------------
    REACT COMPONENT
@@ -106,9 +103,10 @@ export default function VendorEquipments() {
   /* ------------------------------------
      INITIALIZE MAP AFTER MODAL OPENS
   ------------------------------------- */
+
 const initMap = () => {
   if (!window.google || !window.google.maps) {
-    console.log("⏳ Maps not ready yet...");
+    console.log("⏳ Maps not ready — retry...");
     setTimeout(initMap, 300);
     return;
   }
@@ -116,44 +114,59 @@ const initMap = () => {
   const container = document.getElementById("equipmentMap");
   if (!container) return;
 
+  // Reset every time modal opens
+  mapRef.current = null;
+  markerRef.current = null;
+
   const center = {
     lat: Number(formData.baseLat) || 19.076,
     lng: Number(formData.baseLng) || 72.8777,
   };
 
-  const map = new google.maps.Map(container, {
+  const map = new window.google.maps.Map(container, {
     center,
-    zoom: 14,
+    zoom: 13,
+    mapTypeControl: false,
+    streetViewControl: false,
   });
 
-  const marker = new google.maps.Marker({
+  mapRef.current = map;
+
+  const marker = new window.google.maps.Marker({
     position: center,
     map,
     draggable: true,
   });
 
-  marker.addListener("dragend", (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      baseLat: e.latLng.lat().toString(),
-      baseLng: e.latLng.lng().toString(),
-    }));
-  });
+  markerRef.current = marker;
 
-  map.addListener("click", (e) => {
+  const updatePos = (lat, lng) => {
     setFormData((prev) => ({
       ...prev,
-      baseLat: e.latLng.lat().toString(),
-      baseLng: e.latLng.lng().toString(),
+      baseLat: lat.toString(),
+      baseLng: lng.toString(),
     }));
-    marker.setPosition(e.latLng);
-  });
+  };
+
+  marker.addListener("dragend", (e) =>
+    updatePos(e.latLng.lat(), e.latLng.lng())
+  );
+
+  map.addListener("click", (e) =>
+    updatePos(e.latLng.lat(), e.latLng.lng())
+  );
 };
+
+useEffect(() => {
+  loadGoogleMaps();
+}, []);
+
 useEffect(() => {
   if (showAddForm) {
-    setTimeout(initMap, 300);
+    setTimeout(initMap, 500);
   }
 }, [showAddForm]);
+
 
 
 
