@@ -3,10 +3,10 @@
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
 import { motion } from "framer-motion";
-import { Package, Search } from "lucide-react";
+import { Package } from "lucide-react";
 import EquipmentCard from "@/components/equipments/EquipmentCard";
 import { calcDistance } from "@/lib/utils";
-import { API_BASE_URL } from "@/lib/apiConfig";   // ✅ NEW
+import { API_BASE_URL } from "@/lib/apiConfig";
 
 export default function EquipmentsContent() {
   const [equipments, setEquipments] = useState([]);
@@ -22,67 +22,58 @@ export default function EquipmentsContent() {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  // 🗓️ Rental days
   const days =
     from && to
-      ? Math.max(1, Math.ceil((new Date(to) - new Date(from)) / (1000 * 60 * 60 * 24)))
+      ? Math.max(1, Math.ceil((new Date(to) - new Date(from)) / 86400000))
       : 1;
 
-  // 🚚 Travel cost calculator
   const getTravelCost = (vendorLat, vendorLng) => {
-    if (!lat || !lng || isNaN(lat) || isNaN(lng)) return 0;
-    if (!vendorLat || !vendorLng || isNaN(vendorLat) || isNaN(vendorLng)) return 0;
+    if (!lat || !lng || !vendorLat || !vendorLng) return 0;
     const distance = calcDistance(vendorLat, vendorLng, lat, lng);
-    const rate = 150; // ₹ per km
-    const baseCharge = 2000;
-    return Math.round(baseCharge + distance * rate);
+    return Math.round(2000 + distance * 150);
   };
 
-  // 🧠 Fetch equipments (Marketplace)
   useEffect(() => {
     (async function fetchEquipments() {
       try {
         setLoading(true);
 
-        const equipmentQuery = searchParams.get("equipment")?.trim();
-        const url = equipmentQuery
-          ? `${API_BASE_URL}/api/equipments/search?q=${encodeURIComponent(
-              equipmentQuery
-            )}`
-          : `${API_BASE_URL}/api/equipments`;
-
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch equipments");
-
+        const res = await fetch(`${API_BASE_URL}/api/equipments/all`);
         const data = await res.json();
-        console.log("🟢 Marketplace Equipments API response:", data);
 
-        const list = Array.isArray(data?.items)
-          ? data.items
-          : Array.isArray(data?.results)
-          ? data.results
-          : Array.isArray(data)
-          ? data
-          : [];
+        console.log("🟢 Marketplace API:", data);
+
+        const list = Array.isArray(data.items) ? data.items : [];
 
         setEquipments(list);
       } catch (err) {
-        console.error("❌ Error fetching equipments:", err);
+        console.error("❌ Fetch error:", err);
         setEquipments([]);
       } finally {
         setLoading(false);
       }
     })();
-  }, [searchParams]);
+  }, []);
 
-  // 🔍 Filtering & sorting (same as before)
+  // 🔍 FIXED SEARCH + FILTER
   const filteredEquipments = equipments
     .filter((eq) => {
-      const nameMatch = eq.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      const q = searchTerm.toLowerCase().trim();
+
+      const matches =
+        eq.name?.toLowerCase().includes(q) ||
+        eq.type?.toLowerCase().includes(q) ||
+        eq.brand?.toLowerCase().includes(q) ||
+        eq.model?.toLowerCase().includes(q) ||
+        eq.description?.toLowerCase().includes(q);
+
       const typeMatch = filterType ? eq.type === filterType : true;
+
       const priceMatch =
-        parseFloat(eq.price) >= priceRange[0] && parseFloat(eq.price) <= priceRange[1];
-      return nameMatch && typeMatch && priceMatch;
+        parseFloat(eq.price) >= priceRange[0] &&
+        parseFloat(eq.price) <= priceRange[1];
+
+      return matches && typeMatch && priceMatch;
     })
     .sort((a, b) => {
       if (sortBy === "priceLow") return a.price - b.price;
@@ -90,80 +81,62 @@ export default function EquipmentsContent() {
       return new Date(b.createdAt) - new Date(a.createdAt);
     });
 
-  // 🕐 Loading UI (unchanged)
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
           <p className="mt-4 text-gray-600">Loading equipments...</p>
         </div>
       </div>
     );
   }
 
-  // ... rest of your JSX stays EXACTLY the same
   return (
     <div className="min-h-screen bg-gray-50 py-10 sm:py-14">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* HEADER, FILTER BAR, GRID */}
-        {/* (unchanged code from your file, keep as-is) */}
-        {/* ================= HEADER ================= */}
+
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#14213D] mb-2">
+          <h1 className="text-3xl sm:text-4xl font-extrabold text-[#14213D]">
             Available Equipments
           </h1>
           <p className="text-gray-600 text-sm sm:text-base">
-            Browse and rent heavy machinery for your next project.
+            Browse and rent heavy machinery for your project.
           </p>
-          {lat && lng && (
-            <p className="text-xs sm:text-sm text-blue-700 mt-2">
-              Delivery cost calculated from your selected location.
-            </p>
-          )}
         </motion.div>
 
-        {/* ...keep your FILTER BAR + GRID section exactly same, using filteredEquipments */}
-        <div className="flex flex-col sm:flex-row flex-wrap items-center justify-between gap-4 mb-10 bg-white p-4 sm:p-6 rounded-lg shadow-sm border border-gray-100">
-          {/* search / filter / sort code... */}
-        </div>
-
+        {/* ============== GRID ============== */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8"
+          transition={{ delay: 0.15 }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6"
         >
           {filteredEquipments.length === 0 ? (
             <div className="col-span-full text-center py-20">
               <Package className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900">No equipments found</h3>
-              {searchParams.get("equipment") ? (
-                <p className="text-gray-600 mt-2">
-                  No results for “{searchParams.get("equipment")}”. Try a different keyword.
-                </p>
-              ) : (
-                <p className="text-gray-600 mt-2">Try searching or adjusting filters.</p>
-              )}
+              <h3 className="text-lg font-medium text-gray-900">
+                No equipments found
+              </h3>
+              <p className="text-gray-600">Try a different keyword.</p>
             </div>
           ) : (
-            filteredEquipments.map((equipment) => {
-              const travelCost = getTravelCost(equipment.baseLat, equipment.baseLng);
-              const basePrice = parseFloat(equipment.price) || 0;
-              const total = basePrice * days + travelCost;
-              const finalTotal = (total + total * 0.01).toFixed(2);
+            filteredEquipments.map((eq) => {
+              const travel = getTravelCost(eq.baseLat, eq.baseLng);
+              const basePrice = parseFloat(eq.price) || 0;
+              const total = (basePrice * days + travel) * 1.01;
 
               return (
                 <EquipmentCard
-                  key={equipment.id}
-                  equipment={equipment}
+                  key={eq.id}
+                  equipment={eq}
                   days={days}
-                  travelCost={travelCost}
-                  totalAmount={finalTotal}
+                  travelCost={travel}
+                  totalAmount={total.toFixed(2)}
                   pickupDate={from}
                   dropDate={to}
                 />
