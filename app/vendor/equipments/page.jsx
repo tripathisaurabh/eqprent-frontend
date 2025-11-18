@@ -153,28 +153,26 @@ export default function VendorEquipments() {
   /* ------------------------------------
      FIXED API CALL — vendor-only
   ------------------------------------- */
-const fetchEquipments = async () => {
-  try {
-    const vendorId = localStorage.getItem("userId");
-    if (!vendorId) return setEquipments([]);
+  const fetchEquipments = async () => {
+    try {
+      const vendorId = localStorage.getItem("userId");
+      if (!vendorId) return;
 
-    const res = await fetch(
-      `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
-    );
+      const res = await fetch(
+        `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
+      );
+      const data = await res.json();
 
-    const data = await res.json();
-    console.log("🟢 Vendor Equipments API:", data);
+      console.log("🟢 Vendor equipment response:", data);
 
-    // FIXED: use data.equipments (backend output)
-    setEquipments(Array.isArray(data.equipments) ? data.equipments : []);
-  } catch (e) {
-    console.error("❌ Fetch vendor equipments error:", e);
-    setEquipments([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
+      // backend returns { success, equipments }
+      setEquipments(Array.isArray(data.equipments) ? data.equipments : []);
+    } catch (err) {
+      console.error("❌ Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => fetchEquipments(), []);
 
@@ -280,16 +278,18 @@ const fetchEquipments = async () => {
         Loading...
       </div>
     );
+
   return (
-    <div className="min-h-screen bg-gray-50 pt-28 pb-10 px-6">
+    <div className="min-h-screen bg-gray-50 pt-28 pb-10 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
+        {/* HEADER */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="flex justify-between items-center mb-8"
         >
           <h1 className="text-3xl font-bold text-gray-900">Manage Equipment</h1>
+
           <button
             onClick={() => {
               resetForm();
@@ -301,7 +301,7 @@ const fetchEquipments = async () => {
           </button>
         </motion.div>
 
-        {/* Search */}
+        {/* SEARCH */}
         <div className="mb-6 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
           <input
@@ -313,201 +313,185 @@ const fetchEquipments = async () => {
           />
         </div>
 
-        {/* ---------- Add/Edit Modal ---------- */}
+        {/* MODAL */}
         {showAddForm && (
-          <div className="fixed top-25 left-0 right-0 bottom-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm overflow-y-auto">
-            <div className="relative w-full max-w-2xl mx-auto my-10 bg-white rounded-2xl shadow-2xl border border-gray-200 overflow-y-auto max-h-[90vh]">
-              <div className="sticky top-0 bg-white border-b border-gray-200 p-5 flex justify-between items-center z-10">
-                <h2 className="text-xl font-bold text-gray-900">
+          <div className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center overflow-y-auto">
+            <div className="w-full max-w-2xl mx-auto bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto border">
+              
+              {/* TITLE */}
+              <div className="sticky top-0 bg-white border-b p-5 flex justify-between">
+                <h2 className="text-xl font-semibold">
                   {editingEquipment ? "Edit Equipment" : "Add Equipment"}
                 </h2>
-                <button
-                  onClick={resetForm}
-                  className="text-gray-500 hover:text-gray-800 font-medium"
-                >
+                <button onClick={resetForm} className="text-gray-500">
                   ✕
                 </button>
               </div>
 
-              <div className="p-6 overflow-y-auto max-h-[75vh]">
+              <div className="p-6">
                 <form onSubmit={handleSubmit} className="space-y-4">
                   {message && (
-                    <div className="p-2 bg-blue-50 text-blue-700 border border-blue-200 rounded text-sm text-center">
+                    <div className="p-2 bg-blue-50 text-blue-700 text-center rounded">
                       {message}
                     </div>
                   )}
 
-                  {/* Equipment Info */}
+                  {/* NAME */}
                   <input
                     type="text"
                     placeholder="Equipment Name"
+                    className="w-full border p-2 rounded-md"
                     value={formData.name}
                     onChange={(e) =>
                       setFormData({ ...formData, name: e.target.value })
                     }
                     required
-                    className="w-full border p-2 rounded-md"
                   />
+
+                  {/* TYPE */}
                   <select
+                    className="w-full border p-2 rounded-md"
                     value={formData.type}
                     onChange={(e) =>
                       setFormData({ ...formData, type: e.target.value })
                     }
                     required
-                    className="w-full border p-2 rounded-md"
                   >
                     <option value="">Select Type</option>
                     <option>Excavator</option>
                     <option>Crane</option>
-                    <option>Bulldozer</option>
                     <option>Loader</option>
                     <option>Concrete Mixer</option>
+                    <option>Bulldozer</option>
                     <option>Other</option>
                   </select>
 
+                  {/* BRAND + MODEL */}
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       type="text"
                       placeholder="Brand"
+                      className="border p-2 rounded-md"
                       value={formData.brand}
                       onChange={(e) =>
                         setFormData({ ...formData, brand: e.target.value })
                       }
-                      className="border p-2 rounded-md"
                     />
                     <input
                       type="text"
                       placeholder="Model"
+                      className="border p-2 rounded-md"
                       value={formData.model}
                       onChange={(e) =>
                         setFormData({ ...formData, model: e.target.value })
                       }
-                      className="border p-2 rounded-md"
                     />
                   </div>
 
+                  {/* CAPACITY + YEAR */}
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       type="text"
-                      placeholder="Capacity (e.g. 3 Tons)"
+                      placeholder="Capacity"
+                      className="border p-2 rounded-md"
                       value={formData.capacity}
                       onChange={(e) =>
                         setFormData({ ...formData, capacity: e.target.value })
                       }
-                      className="border p-2 rounded-md"
                     />
                     <input
                       type="number"
-                      placeholder="Manufacturing Year"
+                      placeholder="Year"
+                      className="border p-2 rounded-md"
                       value={formData.year}
                       onChange={(e) =>
                         setFormData({ ...formData, year: e.target.value })
                       }
-                      className="border p-2 rounded-md"
                     />
                   </div>
 
+                  {/* QUANTITY + PRICE */}
                   <div className="grid grid-cols-2 gap-3">
                     <input
                       type="number"
-                      placeholder="Quantity Available"
-                      value={formData.quantity ?? ""}
-                      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-                      required
+                      placeholder="Quantity"
                       className="border p-2 rounded-md"
+                      value={formData.quantity}
+                      onChange={(e) =>
+                        setFormData({ ...formData, quantity: e.target.value })
+                      }
+                      required
                     />
-
                     <input
                       type="number"
-                      placeholder="Price per day (₹)"
+                      placeholder="Price/day"
+                      className="border p-2 rounded-md"
                       value={formData.price}
                       onChange={(e) =>
                         setFormData({ ...formData, price: e.target.value })
                       }
                       required
-                      className="border p-2 rounded-md"
                     />
                   </div>
 
+                  {/* DESCRIPTION */}
                   <textarea
                     placeholder="Description"
+                    className="w-full border p-2 rounded-md"
+                    rows={3}
                     value={formData.description}
                     onChange={(e) =>
-                      setFormData({
-                        ...formData,
-                        description: e.target.value,
-                      })
+                      setFormData({ ...formData, description: e.target.value })
                     }
-                    rows={3}
-                    className="w-full border p-2 rounded-md"
                   />
 
-                  {/* Location Picker */}
-                  <div className="space-y-3">
-                    <label className="text-sm text-gray-700 flex items-center mb-1">
-                      <MapPin className="w-4 h-4 mr-1" /> Set Equipment Base
-                      Location
-                    </label>
+                  {/* LOCATION SEARCH */}
+                  <label className="text-sm font-medium">
+                    <MapPin className="inline w-4 h-4 mr-1" />
+                    Set Base Location
+                  </label>
 
-                    <div className="relative">
-                      <input
-                        type="text"
-                        placeholder="Search yard address..."
-                        value={formData.baseAddress}
-                        onChange={(e) => handleSearchInput(e.target.value)}
-                        className="w-full px-4 py-2 border-2 border-gray-300 rounded-md focus:border-blue-500"
-                      />
-                      {suggestions.length > 0 && (
-                        <div className="absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                          {suggestions.map((s) => (
-                            <div
-                              key={s.place_id}
-                              onClick={() => selectSuggestion(s.place_id)}
-                              className="px-4 py-2 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0"
-                            >
-                              {s.description}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  <input
+                    type="text"
+                    placeholder="Search address..."
+                    className="w-full border p-2 rounded-md"
+                    value={formData.baseAddress}
+                    onChange={(e) => setFormData({ ...formData, baseAddress: e.target.value })}
+                  />
 
-                    <button
-                      type="button"
-                      onClick={getUserCurrentLocation}
-                      className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                    >
-                      <Navigation className="h-4 w-4" /> Use My Location
-                    </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!navigator.geolocation) return;
+                      navigator.geolocation.getCurrentPosition((pos) => {
+                        setFormData((p) => ({
+                          ...p,
+                          baseLat: pos.coords.latitude,
+                          baseLng: pos.coords.longitude,
+                        }));
+                      });
+                    }}
+                    className="mt-2 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md"
+                  >
+                    <Navigation className="h-4 w-4" /> Use My Location
+                  </button>
 
-                    <div
-                      id="equipmentMap"
-                      className="w-full h-64 rounded-lg border-2 border-gray-300 bg-gray-100"
-                    ></div>
+                  <div
+                    id="equipmentMap"
+                    className="w-full h-64 bg-gray-100 border rounded-md mt-2"
+                  ></div>
 
-                    {formData.baseLat && (
-                      <p className="text-xs text-gray-600 mt-1">
-                        📍 <b>Lat:</b>{" "}
-                        {isNaN(parseFloat(formData.baseLat))
-                          ? formData.baseLat
-                          : parseFloat(formData.baseLat).toFixed(5)}{" "}
-                        <b>Lng:</b>{" "}
-                        {isNaN(parseFloat(formData.baseLng))
-                          ? formData.baseLng
-                          : parseFloat(formData.baseLng).toFixed(5)}
-                      </p>
-                    )}
-
-                  </div>
-
-                  {/* Image upload */}
+                  {/* IMAGES */}
                   <input
                     id="equipmentImages"
                     type="file"
-                    accept="image/*"
                     multiple
-                    onChange={handleImageChange}
+                    accept="image/*"
                     className="w-full border p-2 rounded-md"
+                    onChange={(e) => {
+                      const files = Array.from(e.target.files);
+                      setImagePreviews(files.map((f) => URL.createObjectURL(f)));
+                    }}
                   />
                   {imagePreviews.length > 0 && (
                     <div className="flex gap-2 mt-2 flex-wrap">
@@ -515,29 +499,31 @@ const fetchEquipments = async () => {
                         <img
                           key={i}
                           src={src}
-                          className="w-16 h-16 object-cover rounded-md border"
+                          className="w-16 h-16 rounded-md object-cover border"
                         />
                       ))}
                     </div>
                   )}
 
+                  {/* BUTTONS */}
                   <div className="flex gap-3 mt-4">
                     <button
                       type="submit"
                       disabled={saving}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
+                      className="flex-1 bg-blue-600 text-white py-2 rounded-md"
                     >
                       {saving
                         ? "Saving..."
                         : editingEquipment
-                          ? "Update"
-                          : "Add"}{" "}
+                        ? "Update"
+                        : "Add"}{" "}
                       Equipment
                     </button>
+
                     <button
                       type="button"
                       onClick={resetForm}
-                      className="flex-1 bg-gray-200 text-gray-800 py-2 rounded-md hover:bg-gray-300"
+                      className="flex-1 bg-gray-200 py-2 rounded-md"
                     >
                       Cancel
                     </button>
@@ -548,63 +534,65 @@ const fetchEquipments = async () => {
           </div>
         )}
 
-        {/* ---------- Equipment Grid ---------- */}
+        {/* EQUIPMENT GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredEquipments.length === 0 ? (
             <div className="col-span-full text-center text-gray-500 py-10">
               <Package className="mx-auto h-10 w-10 text-gray-400 mb-3" />
-              No equipments added yet.
+              No equipment found.
             </div>
-          ) :
-            (
-              filteredEquipments.map((eq) => (
-                <div
-                  key={eq.id}
-                  className="bg-white p-4 rounded-lg shadow-sm border hover:shadow-md transition"
-                >
-                  <div className="h-40 bg-gray-100 rounded-md overflow-hidden mb-3">
-                    {eq.images?.[0] ? (
-                      <img
-                        src={
-                          eq.images[0].url
-                            ? `${API_BASE_URL}${eq.images[0].url}`
-                            : eq.images[0]
-                        }
-                        className="w-full h-full object-cover"
-                        alt={eq.name}
-                      />
-                    ) : (
-                      <Package className="h-10 w-10 text-gray-400 mx-auto mt-14" />
-                    )}
-                  </div>
-                        <span className="font-semibold">Equipment ID:</span> {eq.id}
-
-                  <h3 className="font-semibold text-lg text-gray-900">
-                    {eq.name}
-                  </h3>
-                  <p className="text-sm text-gray-600">{eq.type}</p>
-                  <p className="text-blue-600 font-bold">₹{eq.price}/day</p>
-                  <p className="text-sm text-gray-500 mt-1">
-                    Location: {eq.baseAddress || "Not set"}
-                  </p>
-
-                  <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={() => handleEdit(eq)}
-                      className="flex-1 border border-gray-300 rounded-md py-1 text-sm hover:bg-gray-50"
-                    >
-                      <Edit className="inline h-4 w-4 mr-1" /> Edit
-                    </button>
-                    <button
-                      onClick={() => handleDelete(eq.id)}
-                      className="flex-1 border border-red-300 text-red-600 rounded-md py-1 text-sm hover:bg-red-50"
-                    >
-                      <Trash2 className="inline h-4 w-4 mr-1" /> Delete
-                    </button>
-                  </div>
+          ) : (
+            filteredEquipments.map((eq) => (
+              <div
+                key={eq.id}
+                className="bg-white p-4 rounded-lg shadow-sm border"
+              >
+                <div className="h-40 bg-gray-100 rounded-md mb-3 overflow-hidden">
+                  {eq.images?.[0] ? (
+                    <img
+                      src={
+                        eq.images[0].url.startsWith("http")
+                          ? eq.images[0].url
+                          : `${API_BASE_URL}${eq.images[0].url}`
+                      }
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <Package className="w-10 h-10 text-gray-300 mx-auto mt-14" />
+                  )}
                 </div>
-              ))
-            )}
+
+                <p className="text-sm text-gray-500">
+                  <b>ID:</b> {eq.id}
+                </p>
+
+                <h3 className="font-semibold text-lg">{eq.name}</h3>
+                <p className="text-sm text-gray-600">{eq.type}</p>
+
+                <p className="text-blue-600 font-bold">₹{eq.price}/day</p>
+
+                <p className="text-sm text-gray-500">
+                  Location: {eq.baseAddress || "Not set"}
+                </p>
+
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={() => handleEdit(eq)}
+                    className="flex-1 border border-gray-300 rounded-md py-1 text-sm"
+                  >
+                    <Edit className="inline w-4 h-4 mr-1" /> Edit
+                  </button>
+
+                  <button
+                    onClick={() => handleDelete(eq.id)}
+                    className="flex-1 border border-red-300 text-red-600 rounded-md py-1 text-sm"
+                  >
+                    <Trash2 className="inline w-4 h-4 mr-1" /> Delete
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>
