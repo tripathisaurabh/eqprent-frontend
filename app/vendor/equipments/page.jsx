@@ -153,26 +153,28 @@ export default function VendorEquipments() {
   /* ------------------------------------
      FIXED API CALL — vendor-only
   ------------------------------------- */
-  const fetchEquipments = async () => {
-    try {
-      const vendorId = localStorage.getItem("userId");
-      if (!vendorId) return;
+const fetchEquipments = async () => {
+  try {
+    const vendorId = localStorage.getItem("userId");
+    if (!vendorId) return setEquipments([]);
 
-      const res = await fetch(
-        `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
-      );
-      const data = await res.json();
+    const res = await fetch(
+      `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
+    );
 
-      console.log("🟢 Vendor equipment response:", data);
+    const data = await res.json();
+    console.log("🟢 Vendor Equipments API:", data);
 
-      // backend returns { success, equipments }
-      setEquipments(Array.isArray(data.equipments) ? data.equipments : []);
-    } catch (err) {
-      console.error("❌ Fetch error:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
+    // FIXED: use data.equipments (backend output)
+    setEquipments(Array.isArray(data.equipments) ? data.equipments : []);
+  } catch (e) {
+    console.error("❌ Fetch vendor equipments error:", e);
+    setEquipments([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => fetchEquipments(), []);
 
