@@ -1,14 +1,22 @@
 // frontend/next.config.ts
+
 const nextConfig = {
   experimental: {
-    // ✅ rename this (Next.js 15+ moved it)
-    serverExternalPackages: ["bcrypt", "@prisma/client"], // if you need them
+    serverExternalPackages: ["bcrypt", "@prisma/client"],
   },
+
+  // ⭐ Required for displaying Supabase images in Next.js
+  images: {
+    domains: [
+      "xgtvxtvvbnavqhaqfzvi.supabase.co", // your Supabase domain
+    ],
+  },
+
   async rewrites() {
     return [
       {
         source: "/api/:path*",
-        destination: "http://localhost:5001/api/:path*", // or your live backend
+        destination: "http://localhost:5001/api/:path*", 
       },
     ];
   },
