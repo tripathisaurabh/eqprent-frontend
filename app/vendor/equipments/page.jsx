@@ -106,49 +106,66 @@ export default function VendorEquipments() {
   /* ------------------------------------
      INITIALIZE MAP AFTER MODAL OPENS
   ------------------------------------- */
-  const initMap = () => {
-    if (!showAddForm) return;
-    if (!window.google || !window.google.maps) return;
-    if (mapRef.current) return;
+const initMap = () => {
+  if (!window.google || !window.google.maps) {
+    console.warn("⚠️ Google Maps not loaded yet. Retrying...");
+    setTimeout(initMap, 300);
+    return;
+  }
 
-    const container = document.getElementById("equipmentMap");
-    if (!container) return;
+  const container = document.getElementById("equipmentMap");
+  if (!container) return;
 
-    const center = {
-      lat: parseFloat(formData.baseLat) || 19.076,
-      lng: parseFloat(formData.baseLng) || 72.8777,
-    };
+  // Always reinitialize map fresh
+  mapRef.current = null;
+  markerRef.current = null;
 
-    const map = new window.google.maps.Map(container, {
-      center,
-      zoom: 12,
-      mapTypeControl: false,
-    });
-    mapRef.current = map;
-
-    const marker = new window.google.maps.Marker({
-      position: center,
-      map,
-      draggable: true,
-    });
-    markerRef.current = marker;
-
-    const updatePos = (lat, lng) => {
-      setFormData((p) => ({ ...p, baseLat: lat, baseLng: lng }));
-    };
-
-    marker.addListener("dragend", (e) => updatePos(e.latLng.lat(), e.latLng.lng()));
-    map.addListener("click", (e) => updatePos(e.latLng.lat(), e.latLng.lng()));
+  const center = {
+    lat: Number(formData.baseLat) || 19.076,
+    lng: Number(formData.baseLng) || 72.8777,
   };
 
-  useEffect(() => {
-    if (showAddForm) {
-      setTimeout(initMap, 350);
-    } else {
-      mapRef.current = null;
-      markerRef.current = null;
-    }
-  }, [showAddForm]);
+  const map = new window.google.maps.Map(container, {
+    center,
+    zoom: 13,
+    mapTypeControl: false,
+    streetViewControl: false,
+  });
+
+  mapRef.current = map;
+
+  const marker = new window.google.maps.Marker({
+    position: center,
+    map,
+    draggable: true,
+  });
+
+  markerRef.current = marker;
+
+  const updatePos = (lat, lng) => {
+    setFormData((prev) => ({
+      ...prev,
+      baseLat: lat.toString(),
+      baseLng: lng.toString(),
+    }));
+  };
+
+  marker.addListener("dragend", (e) =>
+    updatePos(e.latLng.lat(), e.latLng.lng())
+  );
+
+  map.addListener("click", (e) =>
+    updatePos(e.latLng.lat(), e.latLng.lng())
+  );
+};
+
+
+useEffect(() => {
+  if (showAddForm) {
+    setTimeout(() => initMap(), 100);
+  }
+}, [showAddForm]);
+
 
   /* ------------------------------------
      FIXED API CALL — vendor-only
@@ -490,12 +507,13 @@ const handleSubmit = async (e) => {
                     onClick={() => {
                       if (!navigator.geolocation) return;
                       navigator.geolocation.getCurrentPosition((pos) => {
-                        setFormData((p) => ({
-                          ...p,
-                          baseLat: pos.coords.latitude,
-                          baseLng: pos.coords.longitude,
-                        }));
-                      });
+  setFormData((p) => ({
+    ...p,
+    baseLat: pos.coords.latitude.toString(),
+    baseLng: pos.coords.longitude.toString(),
+  }));
+});
+
                     }}
                     className="mt-2 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md"
                   >
