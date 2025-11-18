@@ -38,38 +38,48 @@ export default function EquipmentsContent() {
   };
 
   // 🧠 Fetch equipments
-  useEffect(() => {
-    (async function fetchEquipments() {
-      try {
-        setLoading(true);
-        const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL;
-        const equipmentQuery = searchParams.get("equipment")?.trim();
-        let url = equipmentQuery
-          ? `${API_BASE_URL}/api/equipments/search?q=${encodeURIComponent(equipmentQuery)}`
-          : `${API_BASE_URL}/api/equipments`;
+ useEffect(() => {
+  const fetchEquipments = async () => {
+    try {
+      setLoading(true);
 
-        const res = await fetch(url, { cache: "no-store" });
-        if (!res.ok) throw new Error("Failed to fetch equipments");
+      const BASE = process.env.NEXT_PUBLIC_API_URL;
+      if (!BASE) throw new Error("❌ NEXT_PUBLIC_API_URL missing");
 
-const data = await res.json();
+      const q = searchParams.get("equipment")?.trim();
+      const url = q
+        ? `${BASE}/api/equipments/search?q=${encodeURIComponent(q)}`
+        : `${BASE}/api/equipments`;
 
-// 🔥 FIX: correctly parse every type of response
-const list =
-  Array.isArray(data?.equipments) ? data.equipments :
-  Array.isArray(data?.items) ? data.items :
-  Array.isArray(data?.results) ? data.results :
-  Array.isArray(data) ? data :
-  [];
+      console.log("🌍 Fetching →", url);
 
-setEquipments(list);
-      } catch (err) {
-        console.error("❌ Error fetching equipments:", err);
-        setEquipments([]);
-      } finally {
-        setLoading(false);
+      const res = await fetch(url, { cache: "no-store" });
+
+      if (!res.ok) {
+        console.error("❌ Equipment API failed:", res.status);
+        throw new Error(`API failed: ${res.status}`);
       }
-    })();
-  }, [searchParams]);
+
+      const data = await res.json();
+
+      const list =
+        Array.isArray(data.items) ? data.items :
+        Array.isArray(data.results) ? data.results :
+        Array.isArray(data) ? data :
+        [];
+
+      setEquipments(list);
+    } catch (err) {
+      console.error("❌ Fetch Equipments Error:", err);
+      setEquipments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchEquipments();
+}, [searchParams]);
+
 
   // 🔍 Filtering & sorting
   const filteredEquipments = equipments
