@@ -218,7 +218,8 @@ const fetchEquipments = async () => {
       const method = editingEquipment ? "PUT" : "POST";
       const url = editingEquipment
         ? `${API_BASE_URL}/api/equipments/${editingEquipment.id}`
-        : `${API_BASE_URL}/api/equipments`;
+        : `${API_BASE_URL}/api/equipments/all`
+
 
       const formDataToSend = new FormData();
       Object.keys(formData).forEach((key) =>
