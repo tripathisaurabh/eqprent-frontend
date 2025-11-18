@@ -101,14 +101,14 @@ export default function VendorEquipments() {
   /* ------------------------------------
      LOAD GOOGLE MAPS SCRIPT (FIXED)
   ------------------------------------- */
-  useEffect(() => loadGoogleMaps(), []);
+
 
   /* ------------------------------------
      INITIALIZE MAP AFTER MODAL OPENS
   ------------------------------------- */
 const initMap = () => {
   if (!window.google || !window.google.maps) {
-    console.warn("⚠️ Google Maps not loaded yet. Retrying...");
+    console.log("⏳ Maps not ready yet...");
     setTimeout(initMap, 300);
     return;
   }
@@ -116,55 +116,45 @@ const initMap = () => {
   const container = document.getElementById("equipmentMap");
   if (!container) return;
 
-  // Always reinitialize map fresh
-  mapRef.current = null;
-  markerRef.current = null;
-
   const center = {
     lat: Number(formData.baseLat) || 19.076,
     lng: Number(formData.baseLng) || 72.8777,
   };
 
-  const map = new window.google.maps.Map(container, {
+  const map = new google.maps.Map(container, {
     center,
-    zoom: 13,
-    mapTypeControl: false,
-    streetViewControl: false,
+    zoom: 14,
   });
 
-  mapRef.current = map;
-
-  const marker = new window.google.maps.Marker({
+  const marker = new google.maps.Marker({
     position: center,
     map,
     draggable: true,
   });
 
-  markerRef.current = marker;
-
-  const updatePos = (lat, lng) => {
+  marker.addListener("dragend", (e) => {
     setFormData((prev) => ({
       ...prev,
-      baseLat: lat.toString(),
-      baseLng: lng.toString(),
+      baseLat: e.latLng.lat().toString(),
+      baseLng: e.latLng.lng().toString(),
     }));
-  };
+  });
 
-  marker.addListener("dragend", (e) =>
-    updatePos(e.latLng.lat(), e.latLng.lng())
-  );
-
-  map.addListener("click", (e) =>
-    updatePos(e.latLng.lat(), e.latLng.lng())
-  );
+  map.addListener("click", (e) => {
+    setFormData((prev) => ({
+      ...prev,
+      baseLat: e.latLng.lat().toString(),
+      baseLng: e.latLng.lng().toString(),
+    }));
+    marker.setPosition(e.latLng);
+  });
 };
-
-
 useEffect(() => {
   if (showAddForm) {
-    setTimeout(() => initMap(), 100);
+    setTimeout(initMap, 300);
   }
 }, [showAddForm]);
+
 
 
   /* ------------------------------------
