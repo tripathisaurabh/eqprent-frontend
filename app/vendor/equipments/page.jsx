@@ -11,7 +11,7 @@ import {
   MapPin,
   Navigation,
 } from "lucide-react";
-import "leaflet/dist/leaflet.css";
+// import "leaflet/dist/leaflet.css";
 import { API_BASE_URL } from "@/lib/apiConfig";
 
 /* ------------------------------------
