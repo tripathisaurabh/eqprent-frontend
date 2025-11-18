@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import dynamic from "next/dynamic";
 import { motion } from "framer-motion";
 import {
   Plus,
@@ -11,20 +10,19 @@ import {
   MapPin,
   Navigation,
 } from "lucide-react";
-import "leaflet/dist/leaflet.css";
 import { API_BASE_URL } from "@/lib/apiConfig";
 
 /* ------------------------------------
-   SAFE GOOGLE MAPS (SSR-PROOF IMPORT)
+   LOAD GOOGLE MAPS SCRIPT (SAFE)
 ------------------------------------- */
 const loadGoogleMaps = () => {
   if (typeof window === "undefined") return;
   if (window.google && window.google.maps) return;
 
-  const existing = document.querySelector(
+  const scriptExists = document.querySelector(
     'script[src*="maps.googleapis.com/maps/api/js"]'
   );
-  if (existing) return;
+  if (scriptExists) return;
 
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const script = document.createElement("script");
@@ -34,26 +32,25 @@ const loadGoogleMaps = () => {
   document.head.appendChild(script);
 };
 
-/* ------------------------------------
-   REACT COMPONENT
-------------------------------------- */
 export default function VendorEquipments() {
+  /* ------------------------------------
+     STATE
+  ------------------------------------- */
   const [equipments, setEquipments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
-  const [showAddForm, setShowAddForm] = useState(false);
-  const [editingEquipment, setEditingEquipment] = useState(null);
+  const [showForm, setShowForm] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
   const [imagePreviews, setImagePreviews] = useState([]);
-  const [suggestions, setSuggestions] = useState([]);
 
   /* MAP REFS */
   const mapRef = useRef(null);
   const markerRef = useRef(null);
 
   /* FORM DATA */
-  const [formData, setFormData] = useState({
+  const [form, setForm] = useState({
     name: "",
     type: "",
     brand: "",
@@ -63,21 +60,57 @@ export default function VendorEquipments() {
     quantity: "",
     price: "",
     description: "",
+    baseAddress: "",
     pincode: "",
     landmark: "",
-    baseAddress: "",
     perKmRate: "150",
     baseLat: "",
     baseLng: "",
   });
 
   /* ------------------------------------
-     EDIT BUTTON FIX
+     SAFE FETCH — vendor only
+  ------------------------------------- */
+  const fetchEquipments = async () => {
+    try {
+      const vendorId = localStorage.getItem("userId");
+      if (!vendorId) return setEquipments([]);
+
+      const res = await fetch(
+        `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
+      );
+
+      const data = await res.json();
+      console.log("🟢 Vendor Equipments API:", data);
+
+      const list =
+        Array.isArray(data.equipments)
+          ? data.equipments
+          : Array.isArray(data.items)
+          ? data.items
+          : [];
+
+      setEquipments(list);
+    } catch (e) {
+      console.error("❌ Fetch vendor equipments error:", e);
+      setEquipments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadGoogleMaps();
+    fetchEquipments();
+  }, []);
+
+  /* ------------------------------------
+     EDIT HANDLER
   ------------------------------------- */
   const handleEdit = (eq) => {
-    setEditingEquipment(eq);
+    setEditing(eq);
 
-    setFormData({
+    setForm({
       name: eq.name || "",
       type: eq.type || "",
       brand: eq.brand || "",
@@ -95,168 +128,17 @@ export default function VendorEquipments() {
       baseLng: eq.baseLng?.toString() ?? "",
     });
 
-    setShowAddForm(true);
+    setShowForm(true);
   };
 
   /* ------------------------------------
-     LOAD GOOGLE MAPS SCRIPT (FIXED)
+     CLEAN RESET
   ------------------------------------- */
-  useEffect(() => loadGoogleMaps(), []);
-
-  /* ------------------------------------
-     INITIALIZE MAP AFTER MODAL OPENS
-  ------------------------------------- */
-  const initMap = () => {
-    if (!showAddForm) return;
-    if (!window.google || !window.google.maps) return;
-    if (mapRef.current) return;
-
-    const container = document.getElementById("equipmentMap");
-    if (!container) return;
-
-    const center = {
-      lat: parseFloat(formData.baseLat) || 19.076,
-      lng: parseFloat(formData.baseLng) || 72.8777,
-    };
-
-    const map = new window.google.maps.Map(container, {
-      center,
-      zoom: 12,
-      mapTypeControl: false,
-    });
-    mapRef.current = map;
-
-    const marker = new window.google.maps.Marker({
-      position: center,
-      map,
-      draggable: true,
-    });
-    markerRef.current = marker;
-
-    const updatePos = (lat, lng) => {
-      setFormData((p) => ({ ...p, baseLat: lat, baseLng: lng }));
-    };
-
-    marker.addListener("dragend", (e) => updatePos(e.latLng.lat(), e.latLng.lng()));
-    map.addListener("click", (e) => updatePos(e.latLng.lat(), e.latLng.lng()));
-  };
-
-  useEffect(() => {
-    if (showAddForm) {
-      setTimeout(initMap, 350);
-    } else {
-      mapRef.current = null;
-      markerRef.current = null;
-    }
-  }, [showAddForm]);
-
-  /* ------------------------------------
-     FIXED API CALL — vendor-only
-  ------------------------------------- */
-const fetchEquipments = async () => {
-  try {
-    const vendorId = localStorage.getItem("userId");
-    if (!vendorId) {
-      console.warn("⚠️ No vendorId in localStorage");
-      setEquipments([]);
-      setLoading(false);
-      return;
-    }
-
-    const res = await fetch(
-      `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
-    );
-
-    const data = await res.json();
-    console.log("🟢 Vendor Equipments API:", data);
-
-    // ✅ Handle any shape: {equipments: [...]}, {items: [...]}, or direct array
-    const list = Array.isArray(data.equipments)
-      ? data.equipments
-      : Array.isArray(data.items)
-      ? data.items
-      : Array.isArray(data)
-      ? data
-      : [];
-
-    setEquipments(list);
-  } catch (e) {
-    console.error("❌ Fetch vendor equipments error:", e);
-    setEquipments([]);
-  } finally {
-    setLoading(false);
-  }
-};
-
-
-  useEffect(() => fetchEquipments(), []);
-
-  /* ------------------------------------
-     DELETE EQUIPMENT
-  ------------------------------------- */
-  const handleDelete = async (id) => {
-    if (!confirm("Delete this equipment?")) return;
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/equipments/${id}`, {
-        method: "DELETE",
-      });
-      if (res.ok) fetchEquipments();
-    } catch (err) {
-      console.error("❌ Delete error:", err);
-    }
-  };
-
-  /* ------------------------------------
-     ADD / UPDATE EQUIPMENT
-  ------------------------------------- */
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setSaving(true);
-
-    try {
-      const vendorId = localStorage.getItem("userId");
-      const method = editingEquipment ? "PUT" : "POST";
-      const url = editingEquipment
-        ? `${API_BASE_URL}/api/equipments/${editingEquipment.id}`
-        : `${API_BASE_URL}/api/equipments/all`
-
-
-      const formDataToSend = new FormData();
-      Object.keys(formData).forEach((key) =>
-        formDataToSend.append(key, formData[key])
-      );
-      formDataToSend.append("vendorId", vendorId);
-
-      const input = document.getElementById("equipmentImages");
-      if (input?.files.length) {
-        Array.from(input.files).forEach((f) =>
-          formDataToSend.append("images", f)
-        );
-      }
-
-      const res = await fetch(url, { method, body: formDataToSend });
-      const result = await res.json();
-
-      if (res.ok) {
-        setMessage("✅ Saved successfully!");
-        fetchEquipments();
-        resetForm();
-      } else {
-        alert(result.message || "Failed");
-      }
-    } catch (err) {
-      console.error("❌ Save error:", err);
-    }
-
-    setSaving(false);
-    setTimeout(() => setMessage(""), 3000);
-  };
-
   const resetForm = () => {
-    setEditingEquipment(null);
-    setShowAddForm(false);
+    setEditing(null);
+    setShowForm(false);
     setImagePreviews([]);
-    setFormData({
+    setForm({
       name: "",
       type: "",
       brand: "",
@@ -276,21 +158,87 @@ const fetchEquipments = async () => {
   };
 
   /* ------------------------------------
-     FILTERING
+     ADD / UPDATE HANDLER
   ------------------------------------- */
-  const filteredEquipments = equipments.filter(
-    (eq) =>
-      eq.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      eq.type?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const vendorId = localStorage.getItem("userId");
+
+      const url = editing
+        ? `${API_BASE_URL}/api/equipments/${editing.id}`
+        : `${API_BASE_URL}/api/equipments`;
+
+      const method = editing ? "PUT" : "POST";
+
+      const fd = new FormData();
+      Object.keys(form).forEach((k) => fd.append(k, form[k]));
+      fd.append("vendorId", vendorId);
+
+      const input = document.getElementById("equipmentImages");
+      if (input?.files.length) {
+        Array.from(input.files).forEach((f) => fd.append("images", f));
+      }
+
+      const res = await fetch(url, { method, body: fd });
+      const result = await res.json();
+
+      if (res.ok) {
+        setMessage("✅ Saved successfully!");
+        fetchEquipments();
+        resetForm();
+      } else {
+        alert(result.message || "Failed to save equipment.");
+      }
+    } catch (err) {
+      console.error("❌ Save error:", err);
+    }
+
+    setSaving(false);
+    setTimeout(() => setMessage(""), 2500);
+  };
 
   /* ------------------------------------
-     UI STARTS HERE
+     DELETE EQUIPMENT
+  ------------------------------------- */
+  const handleDelete = async (id) => {
+    if (!confirm("Are you sure you want to delete?")) return;
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/equipments/${id}`, {
+        method: "DELETE",
+      });
+
+      if (res.ok) fetchEquipments();
+    } catch (err) {
+      console.error("❌ Delete error:", err);
+    }
+  };
+
+  /* ------------------------------------
+     SAFE IMAGE URL BUILDER
+  ------------------------------------- */
+  const getImage = (imgObj) => {
+    try {
+      const url = imgObj?.url;
+      if (!url) return null;
+      if (typeof url !== "string") return null;
+      if (url.startsWith("http")) return url;
+
+      return `${API_BASE_URL}${url}`;
+    } catch {
+      return null;
+    }
+  };
+
+  /* ------------------------------------
+     UI
   ------------------------------------- */
 
   if (loading)
     return (
-      <div className="min-h-screen flex items-center justify-center text-gray-600">
+      <div className="min-h-screen flex items-center justify-center">
         Loading...
       </div>
     );
@@ -309,307 +257,184 @@ const fetchEquipments = async () => {
           <button
             onClick={() => {
               resetForm();
-              setShowAddForm(true);
+              setShowForm(true);
             }}
-            className="bg-blue-600 text-white px-5 py-2 rounded-lg hover:bg-blue-700 flex items-center"
+            className="bg-blue-600 text-white px-5 py-2 rounded-lg flex items-center"
           >
             <Plus className="mr-2 h-5 w-5" /> Add Equipment
           </button>
         </motion.div>
 
-        {/* SEARCH */}
+        {/* SEARCH BAR */}
         <div className="mb-6 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
           <input
             type="text"
             placeholder="Search equipment..."
+            className="w-full pl-10 pr-4 py-2 border rounded-md"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        {/* MODAL */}
-        {showAddForm && (
-          <div className="fixed inset-0 z-50 bg-black/60 flex justify-center items-center overflow-y-auto">
-            <div className="w-full max-w-2xl mx-auto bg-white rounded-xl shadow-xl max-h-[90vh] overflow-y-auto border">
-              
-              {/* TITLE */}
-              <div className="sticky top-0 bg-white border-b p-5 flex justify-between">
-                <h2 className="text-xl font-semibold">
-                  {editingEquipment ? "Edit Equipment" : "Add Equipment"}
-                </h2>
-                <button onClick={resetForm} className="text-gray-500">
-                  ✕
-                </button>
-              </div>
-
-              <div className="p-6">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                  {message && (
-                    <div className="p-2 bg-blue-50 text-blue-700 text-center rounded">
-                      {message}
-                    </div>
-                  )}
-
-                  {/* NAME */}
-                  <input
-                    type="text"
-                    placeholder="Equipment Name"
-                    className="w-full border p-2 rounded-md"
-                    value={formData.name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, name: e.target.value })
-                    }
-                    required
-                  />
-
-                  {/* TYPE */}
-                  <select
-                    className="w-full border p-2 rounded-md"
-                    value={formData.type}
-                    onChange={(e) =>
-                      setFormData({ ...formData, type: e.target.value })
-                    }
-                    required
-                  >
-                    <option value="">Select Type</option>
-                    <option>Excavator</option>
-                    <option>Crane</option>
-                    <option>Loader</option>
-                    <option>Concrete Mixer</option>
-                    <option>Bulldozer</option>
-                    <option>Other</option>
-                  </select>
-
-                  {/* BRAND + MODEL */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Brand"
-                      className="border p-2 rounded-md"
-                      value={formData.brand}
-                      onChange={(e) =>
-                        setFormData({ ...formData, brand: e.target.value })
-                      }
-                    />
-                    <input
-                      type="text"
-                      placeholder="Model"
-                      className="border p-2 rounded-md"
-                      value={formData.model}
-                      onChange={(e) =>
-                        setFormData({ ...formData, model: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  {/* CAPACITY + YEAR */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="text"
-                      placeholder="Capacity"
-                      className="border p-2 rounded-md"
-                      value={formData.capacity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, capacity: e.target.value })
-                      }
-                    />
-                    <input
-                      type="number"
-                      placeholder="Year"
-                      className="border p-2 rounded-md"
-                      value={formData.year}
-                      onChange={(e) =>
-                        setFormData({ ...formData, year: e.target.value })
-                      }
-                    />
-                  </div>
-
-                  {/* QUANTITY + PRICE */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <input
-                      type="number"
-                      placeholder="Quantity"
-                      className="border p-2 rounded-md"
-                      value={formData.quantity}
-                      onChange={(e) =>
-                        setFormData({ ...formData, quantity: e.target.value })
-                      }
-                      required
-                    />
-                    <input
-                      type="number"
-                      placeholder="Price/day"
-                      className="border p-2 rounded-md"
-                      value={formData.price}
-                      onChange={(e) =>
-                        setFormData({ ...formData, price: e.target.value })
-                      }
-                      required
-                    />
-                  </div>
-
-                  {/* DESCRIPTION */}
-                  <textarea
-                    placeholder="Description"
-                    className="w-full border p-2 rounded-md"
-                    rows={3}
-                    value={formData.description}
-                    onChange={(e) =>
-                      setFormData({ ...formData, description: e.target.value })
-                    }
-                  />
-
-                  {/* LOCATION SEARCH */}
-                  <label className="text-sm font-medium">
-                    <MapPin className="inline w-4 h-4 mr-1" />
-                    Set Base Location
-                  </label>
-
-                  <input
-                    type="text"
-                    placeholder="Search address..."
-                    className="w-full border p-2 rounded-md"
-                    value={formData.baseAddress}
-                    onChange={(e) => setFormData({ ...formData, baseAddress: e.target.value })}
-                  />
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!navigator.geolocation) return;
-                      navigator.geolocation.getCurrentPosition((pos) => {
-                        setFormData((p) => ({
-                          ...p,
-                          baseLat: pos.coords.latitude,
-                          baseLng: pos.coords.longitude,
-                        }));
-                      });
-                    }}
-                    className="mt-2 flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-md"
-                  >
-                    <Navigation className="h-4 w-4" /> Use My Location
-                  </button>
-
-                  <div
-                    id="equipmentMap"
-                    className="w-full h-64 bg-gray-100 border rounded-md mt-2"
-                  ></div>
-
-                  {/* IMAGES */}
-                  <input
-                    id="equipmentImages"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    className="w-full border p-2 rounded-md"
-                    onChange={(e) => {
-                      const files = Array.from(e.target.files);
-                      setImagePreviews(files.map((f) => URL.createObjectURL(f)));
-                    }}
-                  />
-                  {imagePreviews.length > 0 && (
-                    <div className="flex gap-2 mt-2 flex-wrap">
-                      {imagePreviews.map((src, i) => (
-                        <img
-                          key={i}
-                          src={src}
-                          className="w-16 h-16 rounded-md object-cover border"
-                        />
-                      ))}
-                    </div>
-                  )}
-
-                  {/* BUTTONS */}
-                  <div className="flex gap-3 mt-4">
-                    <button
-                      type="submit"
-                      disabled={saving}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-md"
-                    >
-                      {saving
-                        ? "Saving..."
-                        : editingEquipment
-                        ? "Update"
-                        : "Add"}{" "}
-                      Equipment
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={resetForm}
-                      className="flex-1 bg-gray-200 py-2 rounded-md"
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* EQUIPMENT GRID */}
+        {/* GRID */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredEquipments.length === 0 ? (
+          {equipments.length === 0 ? (
             <div className="col-span-full text-center text-gray-500 py-10">
-              <Package className="mx-auto h-10 w-10 text-gray-400 mb-3" />
               No equipment found.
             </div>
           ) : (
-            filteredEquipments.map((eq) => (
-              <div
-                key={eq.id}
-                className="bg-white p-4 rounded-lg shadow-sm border"
-              >
-                <div className="h-40 bg-gray-100 rounded-md mb-3 overflow-hidden">
-                  {eq.images?.[0] ? (
-                    <img
-                      src={
-                        eq.images[0].url.startsWith("http")
-                          ? eq.images[0].url
-                          : `${API_BASE_URL}${eq.images[0].url}`
-                      }
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <Package className="w-10 h-10 text-gray-300 mx-auto mt-14" />
-                  )}
+            equipments
+              .filter(
+                (eq) =>
+                  eq.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                  eq.type?.toLowerCase().includes(searchTerm.toLowerCase())
+              )
+              .map((eq) => (
+                <div key={eq.id} className="bg-white p-4 rounded-lg border">
+                  <div className="h-40 bg-gray-100 rounded-md overflow-hidden mb-3">
+                    {eq.images?.length > 0 ? (
+                      <img
+                        src={getImage(eq.images[0])}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <Package className="h-10 w-10 text-gray-400 mx-auto mt-14" />
+                    )}
+                  </div>
+
+                  <p className="text-xs text-gray-500">ID: {eq.id}</p>
+                  <h3 className="text-lg font-semibold">{eq.name}</h3>
+                  <p className="text-gray-600">{eq.type}</p>
+                  <p className="text-blue-600 font-bold">₹{eq.price}/day</p>
+                  <p className="text-sm text-gray-500">
+                    Location: {eq.baseAddress || "Not set"}
+                  </p>
+
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      onClick={() => handleEdit(eq)}
+                      className="flex-1 border rounded-md py-1 text-sm"
+                    >
+                      <Edit className="inline w-4 h-4 mr-1" /> Edit
+                    </button>
+
+                    <button
+                      onClick={() => handleDelete(eq.id)}
+                      className="flex-1 border border-red-300 text-red-600 rounded-md py-1 text-sm"
+                    >
+                      <Trash2 className="inline w-4 h-4 mr-1" /> Delete
+                    </button>
+                  </div>
                 </div>
-
-                <p className="text-sm text-gray-500">
-                  <b>ID:</b> {eq.id}
-                </p>
-
-                <h3 className="font-semibold text-lg">{eq.name}</h3>
-                <p className="text-sm text-gray-600">{eq.type}</p>
-
-                <p className="text-blue-600 font-bold">₹{eq.price}/day</p>
-
-                <p className="text-sm text-gray-500">
-                  Location: {eq.baseAddress || "Not set"}
-                </p>
-
-                <div className="flex gap-2 mt-3">
-                  <button
-                    onClick={() => handleEdit(eq)}
-                    className="flex-1 border border-gray-300 rounded-md py-1 text-sm"
-                  >
-                    <Edit className="inline w-4 h-4 mr-1" /> Edit
-                  </button>
-
-                  <button
-                    onClick={() => handleDelete(eq.id)}
-                    className="flex-1 border border-red-300 text-red-600 rounded-md py-1 text-sm"
-                  >
-                    <Trash2 className="inline w-4 h-4 mr-1" /> Delete
-                  </button>
-                </div>
-              </div>
-            ))
+              ))
           )}
         </div>
+
+        {/* FORM MODAL */}
+        {showForm && (
+          <div className="fixed inset-0 bg-black/60 z-50 flex justify-center items-center overflow-auto">
+            <div className="bg-white w-full max-w-xl p-6 rounded-xl shadow-xl">
+              <div className="flex justify-between items-center mb-4">
+                <h2 className="text-lg font-semibold">
+                  {editing ? "Edit Equipment" : "Add Equipment"}
+                </h2>
+                <button onClick={resetForm}>✕</button>
+              </div>
+
+              {message && (
+                <div className="p-2 bg-blue-50 text-blue-700 text-center rounded">
+                  {message}
+                </div>
+              )}
+
+              <form onSubmit={handleSubmit} className="space-y-4">
+                {/* FORM FIELDS */}
+                <input
+                  type="text"
+                  placeholder="Name"
+                  className="w-full border p-2 rounded"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                />
+
+                <select
+                  className="w-full border p-2 rounded"
+                  value={form.type}
+                  onChange={(e) => setForm({ ...form, type: e.target.value })}
+                >
+                  <option>Select Type</option>
+                  <option>Excavator</option>
+                  <option>Crane</option>
+                  <option>Loader</option>
+                  <option>Concrete Mixer</option>
+                  <option>Bulldozer</option>
+                  <option>Other</option>
+                </select>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <input
+                    type="text"
+                    placeholder="Brand"
+                    className="border p-2 rounded"
+                    value={form.brand}
+                    onChange={(e) => setForm({ ...form, brand: e.target.value })}
+                  />
+
+                  <input
+                    type="text"
+                    placeholder="Model"
+                    className="border p-2 rounded"
+                    value={form.model}
+                    onChange={(e) => setForm({ ...form, model: e.target.value })}
+                  />
+                </div>
+
+                <input
+                  type="number"
+                  placeholder="Price/day"
+                  className="w-full border p-2 rounded"
+                  value={form.price}
+                  onChange={(e) => setForm({ ...form, price: e.target.value })}
+                  required
+                />
+
+                {/* Images */}
+                <input
+                  id="equipmentImages"
+                  type="file"
+                  multiple
+                  className="w-full border p-2 rounded"
+                  onChange={(e) => {
+                    const files = Array.from(e.target.files);
+                    setImagePreviews(files.map((f) => URL.createObjectURL(f)));
+                  }}
+                />
+
+                {imagePreviews.length > 0 && (
+                  <div className="flex gap-2 flex-wrap mt-2">
+                    {imagePreviews.map((src, i) => (
+                      <img
+                        src={src}
+                        key={i}
+                        className="w-16 h-16 border rounded object-cover"
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="w-full bg-blue-600 text-white py-2 rounded mt-2"
+                >
+                  {saving ? "Saving..." : editing ? "Update" : "Add"} Equipment
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
