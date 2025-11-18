@@ -66,40 +66,45 @@ export function BookEquipmentClient({ equipmentId }) {
   /* =====================================================
      🔹 Fetch Equipment + Unavailable Dates
   ===================================================== */
-  useEffect(() => {
-    async function load() {
-      try {
-        const res = await fetch(
-          `${API_BASE_URL}/api/equipments/${equipmentId}`
-        );
-        const eq = await res.json();
-        if (!eq || eq.error) {
-          setError("Equipment not found.");
-          return;
-        }
+ /* =====================================================
+   🔹 Fetch Equipment + Unavailable Dates
+===================================================== */
+useEffect(() => {
+  async function load() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/equipments/${equipmentId}`);
+      const eq = await res.json();
 
-        setEquipment(eq);
-
-        // Fetch unavailable dates
-        const booked = await fetch(
-          `${API_BASE_URL}/api/bookings/unavailable/${eq.id}`
-        );
-        const bookedData = await booked.json();
-        if (bookedData.success) {
-          setUnavailableRanges(
-            bookedData.dates.map((b) => ({
-              start: new Date(b.pickupDate),
-              end: new Date(b.dropDate),
-            }))
-          );
-        }
-      } catch (err) {
-        console.error("❌ Error loading equipment:", err);
-        setError("Failed to load equipment details.");
+      if (!eq || !eq.success) {
+        setError("Equipment not found.");
+        return;
       }
+
+      // ✅ STORE ONLY THE EQUIPMENT OBJECT
+      setEquipment(eq.equipment);
+
+      // Fetch unavailable dates using correct equipment id
+      const booked = await fetch(
+        `${API_BASE_URL}/api/bookings/unavailable/${eq.equipment.id}`
+      );
+      const bookedData = await booked.json();
+
+      if (bookedData.success) {
+        setUnavailableRanges(
+          bookedData.dates.map((b) => ({
+            start: new Date(b.pickupDate),
+            end: new Date(b.dropDate),
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("❌ Error loading equipment:", err);
+      setError("Failed to load equipment details.");
     }
-    load();
-  }, [equipmentId]);
+  }
+
+  load();
+}, [equipmentId]);
 
   /* =====================================================
      🔹 Compute Total Cost
