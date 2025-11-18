@@ -297,39 +297,32 @@ export default function VendorEquipments() {
   /* ------------------------------------
      FETCH VENDOR EQUIPMENTS
   ------------------------------------- */
-  const fetchEquipments = async () => {
-    try {
-      const vendorId = localStorage.getItem("userId");
-      if (!vendorId) {
-        console.warn("⚠️ No vendorId in localStorage");
-        setEquipments([]);
-        setLoading(false);
-        return;
-      }
-
-      const res = await fetch(
-        `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
-      );
-
-      const data = await res.json();
-      console.log("🟢 Vendor Equipments API:", data);
-
-      const list = Array.isArray(data.items)
-        ? data.items
-        : Array.isArray(data.equipments)
-        ? data.equipments
-        : Array.isArray(data)
-        ? data
-        : [];
-
-      setEquipments(list);
-    } catch (err) {
-      console.error("❌ Fetch vendor equipments error:", err);
+const fetchEquipments = async () => {
+  try {
+    const vendorId = localStorage.getItem("userId");
+    if (!vendorId) {
+      console.warn("⚠️ No vendorId found");
       setEquipments([]);
-    } finally {
       setLoading(false);
+      return;
     }
-  };
+
+    const res = await fetch(
+      `${API_BASE_URL}/api/equipments/vendor/${vendorId}`
+    );
+
+    const data = await res.json();
+    console.log("🟢 Vendor Equipments API:", data);
+
+    setEquipments(data.items || []);
+  } catch (err) {
+    console.error("❌ Fetch vendor equipments error:", err);
+    setEquipments([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   useEffect(() => {
     fetchEquipments();
