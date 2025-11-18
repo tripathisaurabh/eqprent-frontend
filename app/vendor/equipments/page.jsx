@@ -237,26 +237,26 @@ export default function VendorEquipments() {
   };
 
   /* ------------------ Fetch equipments ------------------ */
-  const fetchEquipments = async () => {
-    try {
-      const vendorId = localStorage.getItem("userId");
-      if (!vendorId) return setEquipments([]);
-      const res = await fetch(
-        `${API_BASE_URL}/api/equipments?vendorId=${vendorId}`
-      );
-      const data = await res.json();
-      setEquipments(Array.isArray(data.items) ? data.items : []);
-    } catch (e) {
-      console.error("❌ Fetch error:", e);
-      setEquipments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+ const fetchEquipments = async () => {
+  try {
+    const vendorId = localStorage.getItem("userId");
+    if (!vendorId) return setEquipments([]);
 
-  useEffect(() => {
-    fetchEquipments();
-  }, []);
+    const res = await fetch(`${API_BASE_URL}/api/equipments?vendorId=${vendorId}`);
+    const data = await res.json();
+
+    console.log("Vendor equipments:", data);
+
+    // FIX — use data.equipments instead of data.items
+    setEquipments(Array.isArray(data.equipments) ? data.equipments : []);
+  } catch (e) {
+    console.error("❌ Fetch error:", e);
+    setEquipments([]);
+  } finally {
+    setLoading(false);
+  }
+};
+
 
   /* ------------------ Image Preview ------------------ */
   const handleImageChange = (e) => {
